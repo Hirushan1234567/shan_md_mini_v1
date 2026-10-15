@@ -322,35 +322,77 @@
     </footer>
 
   </main>
+<script>
+  const form = document.getElementById("pairForm");
+  const phoneInput = document.getElementById("phone");
+  const button = document.getElementById("pairButton");
+  const statusBox = document.getElementById("status");
 
-  <script>
-    const form = document.getElementById("pairForm");
-    const phoneInput = document.getElementById("phone");
-    const button = document.getElementById("pairButton");
-    const statusBox = document.getElementById("status");
+  form.addEventListener("submit", async function (event) {
+    event.preventDefault();
 
-    form.addEventListener("submit", function (event) {
-      event.preventDefault();
+    const number = phoneInput.value.replace(/\D/g, "");
 
-      const phone = phoneInput.value.replace(/\D/g, "");
+    if (number.length < 8 || number.length > 15) {
+      statusBox.textContent =
+        "❌ Please enter a valid number with country code.";
+      return;
+    }
 
-      if (phone.length < 8 || phone.length > 15) {
+    button.disabled = true;
+    button.textContent = "GENERATING...";
+    statusBox.textContent = "⏳ Connecting to SHAN MINI BOT API...";
+
+    try {
+      const response = await fetch("/api/pair", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ number })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok || !data.success) {
+        const messages = {
+          invalid_number: "❌ Invalid number. Include your country code.",
+          rate_limited: "⚠️ Too many requests. Please try again later.",
+          owner_only: "🔒 Public pairing is currently disabled."
+        };
+
         statusBox.textContent =
-          "❌ Please enter a valid international phone number.";
+          messages[data.error] ||
+          data.message ||
+          "❌ Could not generate a pairing code.";
+
         return;
       }
 
-      statusBox.textContent =
-        "ℹ️ The website design is ready, but the secure pairing API has not been connected yet.";
+      const pairCode =
+        data.code ||
+        data.pairCode ||
+        data.pairingCode;
 
-      /*
-        IMPORTANT:
-        This is only the frontend.
-        Real pairing requires a protected backend API.
-        Never place API secrets or session credentials here.
-      */
-    });
-  </script>
+      if (pairCode) {
+        statusBox.textContent =
+          "✅ Pair Code: " + pairCode +
+          "\n\nOpen WhatsApp → Linked Devices → Link a Device → Link with phone number.";
+      } else {
+        statusBox.textContent =
+          data.message ||
+          "✅ Request processed, but no pairing code was returned.";
+      }
+
+    } catch (error) {
+      statusBox.textContent =
+        "❌ Cannot connect to the API. Please try again later.";
+    } finally {
+      button.disabled = false;
+      button.textContent = "GENERATE PAIR CODE";
+    }
+  });
+</script>
 
 </body>
-  </html>
+</html>
